@@ -1,11 +1,23 @@
 import json
 import requests
 import os
+import time
 
 MAX_PROMPT_CHARS = 100000
-MAX_RESPONSE_TOKENS = 1000
+MAX_RESPONSE_TOKENS = 4096
 
 def chat(query, model = "gpt-4o", system_prompt=None):
+    retries = 0
+    while retries < 3:
+        try:
+            return _chat(query, model, system_prompt)
+        except ValueError as e:
+            print(f"Error: {e}")
+            retries += 1
+            time.sleep(2**retries)
+
+        
+def _chat(query, model, system_prompt):
     default_system_prompt = "You are an AI JSON Generation Assistant. You always respond with JSON only, without preambles or additional text in your response. "
     sys_prompt = system_prompt or default_system_prompt
 
@@ -42,22 +54,22 @@ def chat(query, model = "gpt-4o", system_prompt=None):
             {"role": "system", "content": sys_prompt},
             user_message
         ]
-        body["response_format"] = {"type": "json_object"}
-
+        if 'json' in sys_prompt.lower():
+            body["response_format"] = {"type": "json_object"}
+    print('chat')
     response = requests.post(url, headers=headers, json=body)
     
     if response.status_code == 200:
         json_response = response.json()
+        print('got resp')
         
         if model.startswith('claude'):
             message = json_response["content"][0]["text"]
         else:
             message = json_response["choices"][0]["message"]["content"]
 
-        usage = json_response.get("usage", {})
-        
         try:
-            if not system_prompt:
+            if 'json' in sys_prompt.lower():
                 obj = json.loads(message)
             else:
                 obj = message

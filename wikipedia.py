@@ -34,9 +34,5 @@ def find_article(query):
                 return candidate
             valid = input(f"Is this the article you are looking for? (y/n): ")
             if valid.lower() == 'y':
-                return get_full_article_text(candidate)
+                return candidate
         return "No articles found."
-
-def pull_article(query):
-    article = find_article(query)
-    return get_full_article_text(article)
