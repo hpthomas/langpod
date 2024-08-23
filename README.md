@@ -6,13 +6,13 @@ Warning - this gets quite expensive. A large article like [España](https://es.w
 If you'd like to be a beta-tester for a (paid) web generation UI & content vault for this sort of multilingual audio, [join the waiting list](https://docs.google.com/forms/d/1FU_2kR9lYWMMeF-1QcF6NVVd_8nVcL3peXKn7ZHuk24/)!
 
 ## Examples
-LangPod generates audio sentence-by-sentence and can repeat sentences in various configurations - I (an English speaker learning Spanish) find it helpful to play a Spanish sentence twice, then play the English translation once, which is how these examples are structured. Most of these are short subsets of articles, given the cost.
+LangPod generates audio sentence-by-sentence and can repeat sentences in various configurations - I (an English speaker learning Spanish) find it helpful to play a Spanish sentence twice, then play the English translation once, which is how these examples are structured. Most of these are short subsets of articles, given the cost, but the Spanish version is a complete article.
 
 ___[Aprendizaje Automático (Machine Learning)](https://es.wikipedia.org/wiki/Aprendizaje_autom%C3%A1tico)___: [Spanish/English](https://github.com/hpthomas/langpod/blob/main/samples/ML_es_es_en.mp3?raw=true) or [Spanish Only](https://github.com/hpthomas/langpod/blob/main/samples/ML_es.mp3?raw=true)
 
 __[Apprentissage Automatique (Machine Learning)](https://fr.wikipedia.org/wiki/Apprentissage_automatique)__: [French/English](https://github.com/hpthomas/langpod/blob/main/samples/ML_fr_fr_en.mp3?raw=true) or [French Only](https://github.com/hpthomas/langpod/blob/main/samples/ML_fr.mp3?raw=true)
 
-__[Maschinelles Lernen](https://de.wikipedia.org/wiki/Maschinelles_Lernen)__: [German/English](https://github.com/hpthomas/langpod/blob/main/samples/ML_de_de_en.mp3?raw=true) or [German Only](https://github.com/hpthomas/langpod/blob/main/samples/ML_de.mp3?raw=true)
+__[Maschinelles Lernen (Machine Learning)](https://de.wikipedia.org/wiki/Maschinelles_Lernen)__: [German/English](https://github.com/hpthomas/langpod/blob/main/samples/ML_de_de_en.mp3?raw=true) or [German Only](https://github.com/hpthomas/langpod/blob/main/samples/ML_de.mp3?raw=true)
 
 ## Usage
 An OpenAI API key is required (`OPENAI_API_KEY`) for text translations, and an ElevelLabs API Key (`ELEVENLABS_API_KEY`) is strongly reccomended for dictation - the OpenAI endpoint for this works fine but sounds much worse to me. Voice IDs are hard-coded at the moment. This saves files and translations locally so it won't make the same API calls repeatedly.
