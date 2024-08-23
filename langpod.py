@@ -88,7 +88,7 @@ def main():
 
     num_texts = len(translation[args.home_language])
     if num_texts != len(translation[args.away_language]):
-        raise ValueError("Number of home and Spanish translations do not match.")
+        raise ValueError("Number of translations do not match.")
     
     combined_audio = AudioSegment.empty()
 
