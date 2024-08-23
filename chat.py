@@ -6,6 +6,8 @@ import time
 MAX_PROMPT_CHARS = 100000
 MAX_RESPONSE_TOKENS = 4096
 
+TEXT_SYSTEM_PROMPT = "Respond with the exact content requested, line-by-line. Include no additional characters or explanations unless requested."
+
 def chat(query, model = "gpt-4o", system_prompt=None):
     retries = 0
     while retries < 3:

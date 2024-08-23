@@ -1,11 +1,12 @@
 import wikipediaapi
 import requests
+from chat import chat, TEXT_SYSTEM_PROMPT
 
-def get_full_article_text(article_name):
+def get_full_article_text(article_name, language):
     wiki_wiki = wikipediaapi.Wikipedia(
         user_agent='github.com/hpthomas/langpod',
         extract_format=wikipediaapi.ExtractFormat.WIKI,
-        language='en'
+        language=language
     )
     page_py = wiki_wiki.page(article_name)
     if not page_py.exists():
@@ -13,8 +14,9 @@ def get_full_article_text(article_name):
         return None
     return page_py.text
 
-def search_wikipedia(query, limit=10):
-    url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&format=json&srlimit={limit}"
+def search_wikipedia(query, language, limit=10):
+    url = f"https://{language}.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&format=json&srlimit={limit}"
+    print(url)
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
@@ -23,8 +25,17 @@ def search_wikipedia(query, limit=10):
     else:
         return f"Error: Unable to perform search. Status code: {response.status_code}"
 
-def find_article(query):
-    candidates = search_wikipedia(query)
+def translate_query(query, source_language, target_language):
+    prompt = f"""Translate this from {source_language} to {target_language}. Return only the translated text and no explanation or note.
+{query}
+"""
+    result = chat(prompt, system_prompt=TEXT_SYSTEM_PROMPT)
+    return result.strip()
+
+def find_article(query: str, home_language: str, away_language: str, translate_search: bool):
+    if translate_search:
+        query = translate_query(query, home_language, away_language)
+    candidates = search_wikipedia(query, away_language)
     if not candidates:
         return "No articles found."
     else:

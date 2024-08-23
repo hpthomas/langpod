@@ -1,89 +1,111 @@
+import argparse
 from sys import argv
 from wikipedia import find_article, get_full_article_text
 from script import get_clean_article, translate_article, regrade_article
 from audio import speak_batch, play_mp3
+from languages import LANGUAGES
 import os
 import json
 
 
 def main():
-    search_query = argv[1]
-    if len(argv) > 2:
-        level = argv[2]
-    else:
-        level = None
-    article_name = find_article(search_query)
+    parser = argparse.ArgumentParser(description='Process Wikipedia articles with TTS options.')
+    parser.add_argument('search_query', help='The search query for the Wikipedia article')
+    parser.add_argument('level', nargs='?', default=None, help='The level for regrading the article')
+    parser.add_argument('-hl', '--home-language', help='The language you speak', default='en')
+    parser.add_argument('-al', '--away-language', help='The language you are learning', default='es')
+    parser.add_argument('-ts', '--translate-search', action='store_true', help='Translate the search query (i.e. query in English for Spanish article)')
+    parser.add_argument('-ht', '--home-tts', choices=['eleven', 'openai'], help='TTS engine for home language')
+    parser.add_argument('-at', '--away-tts', choices=['eleven', 'openai'], help='TTS engine for away language')
+    parser.add_argument('-t', '--tts', choices=['eleven', 'openai'], help='TTS engine for both languages')
+
+    args = parser.parse_args()
+
+    if args.tts and (args.home_tts or args.away_tts):
+        parser.error("The -t/--tts option is incompatible with -ht/--home-tts and -at/--away-tts")
+
+    home_tts = args.home_tts or args.tts or 'openai'
+    away_tts = args.away_tts or args.tts or 'eleven'
+
+    article_name = find_article(args.search_query, args.home_language, args.away_language, args.translate_search)
     article_contents = None
-    article_dir = f"data/{article_name.replace(' ', '_')}"
+    language_dir = f"data/{args.away_language}"
+    if not os.path.exists(language_dir):
+        os.makedirs(language_dir)
+    article_dir = f"{language_dir}/{article_name.replace(' ', '_')}"
 
     if not os.path.exists(article_dir):
         os.makedirs(article_dir)
-    if not os.path.exists(f"{article_dir}/en/"):
-        os.makedirs(f"{article_dir}/en/")
-    if not os.path.exists(f"{article_dir}/es/"):
-        os.makedirs(f"{article_dir}/es/")
+    if not os.path.exists(f"{article_dir}/{args.home_language}/"):
+        os.makedirs(f"{article_dir}/{args.home_language}/")
+    if not os.path.exists(f"{article_dir}/{args.away_language}/"):
+        os.makedirs(f"{article_dir}/{args.away_language}/")
+    if not os.path.exists(f"{article_dir}/{args.home_language}/{home_tts}/"):
+        os.makedirs(f"{article_dir}/{args.home_language}/{home_tts}/")
+    if not os.path.exists(f"{article_dir}/{args.away_language}/{away_tts}/"):
+        os.makedirs(f"{article_dir}/{args.away_language}/{away_tts}/")
 
-    if level is not None and not os.path.exists(f"{article_dir}/{level.replace(' ','_')}/"):
-        os.makedirs(f'{article_dir}/{level.replace(" ","_")}/')
-    if level is not None and not os.path.exists(f'{article_dir}/{level.replace(" ","_")}/en/'):
-        os.makedirs(f'{article_dir}/{level.replace(" ","_")}/en/')
-    if level is not None and not os.path.exists(f'{article_dir}/{level.replace(" ","_")}/es/'):
-        os.makedirs(f'{article_dir}/{level.replace(" ","_")}/es/')
+    if args.level is not None:
+        level_dir = f"{article_dir}/{args.level.replace(' ','_')}"
+        if not os.path.exists(level_dir):
+            os.makedirs(level_dir)
+        if not os.path.exists(f'{level_dir}/{args.home_language}/{home_tts}/'):
+            os.makedirs(f'{level_dir}/{args.home_language}/{home_tts}/')
+        if not os.path.exists(f'{level_dir}/{args.away_language}/{away_tts}/'):
+            os.makedirs(f'{level_dir}/{args.away_language}/{away_tts}/')
 
-    base_path = f"{article_dir}/base.json"
+    base_path = f"{article_dir}/contents.json"
     translation = None
     if os.path.exists(base_path):
         with open(base_path, 'r') as f:
             translation = json.load(f)
     else:
-        article_contents = get_full_article_text(article_name)
-        cleaned = get_clean_article(article_contents, max_sections=1)
-        translation = translate_article(cleaned)
+        article_contents = get_full_article_text(article_name, args.away_language)
+        cleaned = get_clean_article(article_contents)
+        translation = translate_article(cleaned, args.home_language, args.away_language)
         with open(base_path, 'w') as f:
             json.dump(translation, f)
 
-    if level is not None:
-        article_dir = f"{article_dir}/{level.replace(' ','_')}"
-        level_article_path = f"{article_dir}/base.json"
+    if args.level is not None:
+        level_article_path = f"{level_dir}/contents.json"
         if os.path.exists(level_article_path):
             with open(level_article_path, 'r') as f:
                 translation = json.load(f)
         else:
-            clean_article_contents = '\n'.join(translation['en'])
-            regraded = regrade_article(clean_article_contents, level)
-            translation = translate_article(regraded)
+            clean_article_contents = '\n'.join(translation[args.home_language])
+            regraded = regrade_article(clean_article_contents, args.level)
+            translation = translate_article(regraded, args.home_language, args.away_language)
             with open(level_article_path, 'w') as f:
                 json.dump(translation, f)
 
     if translation is None:
-        raise ValueError("No translatio found.")  
+        raise ValueError("No translation found.")  
 
-    # go through translation['en'] in batches of 5
-    num_texts = len(translation['en'])
-    if num_texts != len(translation['es']):
-        raise ValueError("Number of English and Spanish translations do not match.")
+    num_texts = len(translation[args.home_language])
+    if num_texts != len(translation[args.away_language]):
+        raise ValueError("Number of home and Spanish translations do not match.")
     
     for i in range(0, num_texts, 5):
-        english_batch = translation['en'][i:i+5]
-        spanish_batch = translation['es'][i:i+5]
+        home_batch = translation[args.home_language][i:i+5]
+        away_batch = translation[args.away_language][i:i+5]
 
-        english_filenames = []
-        spanish_filenames = []
+        home_filenames = []
+        away_filenames = []
 
         for x in range(i, i+5):
-            english_filenames.append(f"{article_dir}/en/{x}.mp3")
-            spanish_filenames.append(f"{article_dir}/es/{x}.mp3")
+            home_filenames.append(f"{level_dir if args.level else article_dir}/{args.home_language}/{home_tts}/{x}.mp3")
+            away_filenames.append(f"{level_dir if args.level else article_dir}/{args.away_language}/{away_tts}/{x}.mp3")
 
-        speak_batch(english_batch, english_filenames, 'eleven')
-        speak_batch(spanish_batch, spanish_filenames, 'eleven')
-        spanish_only = False
-        for i in range(len(english_filenames)):
-            if spanish_only:
-                play_mp3(spanish_filenames[i])
+        speak_batch(home_batch, home_filenames, home_tts)
+        speak_batch(away_batch, away_filenames, away_tts)
+        away_only = False
+        for j in range(len(home_filenames)):
+            if away_only:
+                play_mp3(away_filenames[j])
                 continue
-            play_mp3(spanish_filenames[i])
-            play_mp3(spanish_filenames[i])
-            play_mp3(english_filenames[i])
+            play_mp3(away_filenames[j])
+            play_mp3(away_filenames[j])
+            play_mp3(home_filenames[j])
 
 if __name__ == "__main__":
     main()
