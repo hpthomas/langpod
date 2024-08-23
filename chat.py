@@ -58,12 +58,10 @@ def _chat(query, model, system_prompt):
         ]
         if 'json' in sys_prompt.lower():
             body["response_format"] = {"type": "json_object"}
-    print('chat')
     response = requests.post(url, headers=headers, json=body)
     
     if response.status_code == 200:
         json_response = response.json()
-        print('got resp')
         
         if model.startswith('claude'):
             message = json_response["content"][0]["text"]

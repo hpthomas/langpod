@@ -104,16 +104,13 @@ def translate_article(article_contents, home, away):
         joined[away] += translation[away]
     return joined
 
-def regrade_section(section_text, level, cleaned_sections, index):
-    prompt = f"""This article is going to be read out-loud to an English langugage learner at the "{level}" level. 
-The article must be written specifically for "{level}" level learners. 
+def regrade_section(section_text, level, language, cleaned_sections, index):
+    prompt = f"""This article is going to be read out-loud to a {LANGUAGES[language]} learner at a {level} level. 
+The article must be written specifically for {level}-level {LANGUAGES[language]} learners. 
+If the text is substantially above this level, it is expected that you greatly simplify the text - for a sentence like "The quick brown fox jumps over the lazy dog" into "The fox jobs over the dog.".
 Do not write a copy of the original text, but a new, simplified version of the text. 
-(Note: If the original text is already simpler than the "{level}" level, make no changes.)
-Rewrite the text below to a level they are likely to understand most of the content.
-If the level is laughably far below the text, you can shorten the text to a few sentences that are at the correct level. 
-For example, "absolute beginner" level text should have sentences of a few words at most.
 NOTE: Do not add any introductory text or explanations, and do not add any titles, headers, or notes.
-Respond with a simplified version of the text that is suitable for an home language learner at the "{level}" level, and nothing else.
+Respond with a simplified version of the text that is suitable for an home language learner at the a {level} {LANGUAGES[language]} level, and nothing else.
 
 {section_text}
 """
@@ -124,14 +121,14 @@ Respond with a simplified version of the text that is suitable for an home langu
     result = '\n'.join([line for line in lines if line.strip()])
     cleaned_sections[index] = result
 
-def regrade_article(article_contents, level):
+def regrade_article(article_contents, level, away_language):
     chunks = chunk_raw_article(article_contents)
     cleaned_sections = [None] * len(chunks)
     for batch_start in range(0, len(chunks), 5):
         batch_end = min(batch_start + 5, len(chunks))
         threads = []
         for index in range(batch_start, batch_end):
-            thread = Thread(target=regrade_section, args=(chunks[index], level, cleaned_sections, index))
+            thread = Thread(target=regrade_section, args=(chunks[index], level, away_language, cleaned_sections, index))
             threads.append(thread)
             thread.start()
         for thread in threads:
