@@ -6,6 +6,7 @@ from audio import speak_batch, play_mp3
 from languages import LANGUAGES
 import os
 import json
+from pydub import AudioSegment
 
 
 def main():
@@ -18,6 +19,10 @@ def main():
     parser.add_argument('-ht', '--home-tts', choices=['eleven', 'openai'], help='TTS engine for home language')
     parser.add_argument('-at', '--away-tts', choices=['eleven', 'openai'], help='TTS engine for away language')
     parser.add_argument('-t', '--tts', choices=['eleven', 'openai'], help='TTS engine for both languages')
+    parser.add_argument('-p', '--play-order', help='Order to play audio file. Use language abbreviation separated by "-", e.g. "es-es-en"' )
+    parser.add_argument('-s', '--silent', help='do not play audio', action='store_true')
+    parser.add_argument('-l', '--limit', type=int, help='Limit the number of sentences to translate')
+    parser.add_argument('-o', '--outfile', help='Output file for combined audio', default='output.mp3')
 
     args = parser.parse_args()
 
@@ -93,19 +98,59 @@ def main():
         away_filenames = []
 
         for x in range(i, i+5):
+            if args.limit and x >= args.limit:
+                break
             home_filenames.append(f"{level_dir if args.level else article_dir}/{args.home_language}/{home_tts}/{x}.mp3")
             away_filenames.append(f"{level_dir if args.level else article_dir}/{args.away_language}/{away_tts}/{x}.mp3")
 
         speak_batch(home_batch, home_filenames, home_tts)
         speak_batch(away_batch, away_filenames, away_tts)
-        away_only = False
-        for j in range(len(home_filenames)):
-            if away_only:
-                play_mp3(away_filenames[j])
-                continue
-            play_mp3(away_filenames[j])
-            play_mp3(away_filenames[j])
-            play_mp3(home_filenames[j])
+
+
+    # Initialize combined audio files
+    combined_audio = AudioSegment.empty()
+
+    for i in range(0, num_texts, 5):
+        home_batch = translation[args.home_language][i:i+5]
+        away_batch = translation[args.away_language][i:i+5]
+
+        home_filenames = []
+        away_filenames = []
+
+        for x in range(i, i+5):
+            if args.limit and x >= args.limit:
+                break
+            home_filenames.append(f"{level_dir if args.level else article_dir}/{args.home_language}/{home_tts}/{x}.mp3")
+            away_filenames.append(f"{level_dir if args.level else article_dir}/{args.away_language}/{away_tts}/{x}.mp3")
+
+        speak_batch(home_batch, home_filenames, home_tts)
+        speak_batch(away_batch, away_filenames, away_tts)
+
+        try:
+            for j in range(len(home_filenames)):
+                if args.play_order:
+                    order = args.play_order.split('-')
+                    for lang in order:
+                        if lang == args.home_language:
+                            combined_audio += AudioSegment.from_mp3(home_filenames[j])
+                            if not args.silent:
+                                play_mp3(home_filenames[j])
+                        elif lang == args.away_language:
+                            combined_audio += AudioSegment.from_mp3(away_filenames[j])
+                            if not args.silent:
+                                play_mp3(away_filenames[j])
+                else:
+                    combined_audio += AudioSegment.from_mp3(away_filenames[j])
+                    combined_audio += AudioSegment.from_mp3(away_filenames[j])
+                    combined_audio += AudioSegment.from_mp3(home_filenames[j])
+                    if not args.silent:
+                        play_mp3(away_filenames[j])
+                        play_mp3(away_filenames[j])
+                        play_mp3(home_filenames[j])
+        except KeyboardInterrupt:
+            import pdb; pdb.set_trace()
+
+    combined_audio.export(args.outfile, format="mp3")
 
 if __name__ == "__main__":
     main()
